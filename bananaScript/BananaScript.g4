@@ -8,52 +8,76 @@ WS: [ \t\r\n]+ -> skip; // Espaço em branco (ignorado)
 COMMENT: '//' ~[\r\n]* -> skip; // Comentários de linha
 
 // Regras de parser
-program: function+;     // Programa consiste em uma ou mais funções OK
+program: function+ EOF;     // Programa consiste em uma ou mais funções OK
 
-function: 'fun' ID '(' params ')' type block; // Definição de função OK
+function: 'fun' ID '(' params ')' funType block returnStatement?; // Definição de função OK
 
-params: (param (',' param)*)?; // Lista de parâmetros de função OK
+params: paramOptional?; // Lista de parâmetros de função OK
+
+paramOptional: param paramRecursive*;
+
+paramRecursive: ',' param;
+
 param: type ID;                // Parâmetro da função DEFAULT
 
-type: 'int' | 'float' | 'string' | 'boolean' | 'void' | 'char' | 'double'; // Tipos de dados OK
+type: 'int' | 'float' | 'string' | 'boolean' | 'char' | 'double';
 
-block: statement+; // Bloco de código DEFAULT
+funType: type | 'void' ; // Tipos de dados OK
+
+block: (statement|operation|expression)+; // Bloco de código DEFAULT
 
 statement: assignment // DEFAULT
          | ifStatement
          | whileStatement
          | forStatement
          | tryCatchStatement
-         | returnStatement;
+         | returnStatement
+         | throwStatement
+         | print;
 
-assignment: ID '=' expression; // Atribuição de variável OK
+assignment: type ID '=' expression; // Atribuição de variável OK
 
-ifStatement: 'if' booleanExpression ':' block  elseStatement?; // Estrutura condicional if OK
+ifStatement: 'if' booleanExpression block ('.'|(elseStatement | elsifStatement)?); // Estrutura condicional if OK
 
-elseStatement: 'else' block; // OK
+elseStatement: 'else' block '.'; // OK
 
-whileStatement: 'while' booleanExpression ':' block; // Loop while OK
+elsifStatement: 'elsif' booleanExpression block ('.'| elsifStatement |elseStatement?);
 
-forStatement: 'for' ID '=' expression ';' booleanExpression ';' ID ('++' | '--') ':' block; // Loop for
+whileStatement: 'while' booleanExpression block '.'; // Loop while OK
 
-tryCatchStatement: 'try' ':' block 'catch' '(' ID ')' ':' block; // Tratamento de exceção
+forStatement: 'for' ID '=' expression ';' booleanExpression ';' ID ('++' | '--') block '.'; // Loop for
 
-returnStatement: 'return' expression ;// Retorno de função
+tryCatchStatement: 'try' block 'catch' '(' ID ')' block '.'; // Tratamento de exceção OK
 
-expression: term (('*' | '+' | '-' | '/') term)*; // Expressões aritméticas
+returnStatement: 'return' expression '.'; // Retorno de função OK
 
-booleanExpression: term (('==' | '!=' | '!' | '>=' | '<=' | '&&' | '||') term)*;
+throwStatement: 'throw' expression '.'; // OK
+
+expression: term (('*' | '+' | '-' | '/') expression)*; // Expressões aritméticas
+
+operation: ID '=' expression;
+
+booleanExpression: term (booleans term)*;
+
+booleans: '==' 
+        | '!=' 
+        | '!' 
+        | '>' 
+        | '<' 
+        | '>=' 
+        | '<=' 
+        | '&&' 
+        | '||';
 
 term: INT
     | ID
-    | STRING
-    | '(' expression ')'
-    | functionCall; // Termos em uma expressão
+    | STRING 
+    | functionCall; // Termos em uma expressão falta implementar na main
 
-functionCall: ID '(' (expression (',' expression)*)? ')'; // Chamada de função
+functionCall: ID '(' functionExpression? ')'; // Chamada de função
 
-// Definindo prioridade de operadores
-MUL: '*';
-DIV: '/';
-ADD: '+';
-SUB: '-';
+functionExpression: expression functionExpressionRecursive*;
+
+functionExpressionRecursive: ',' expression;
+
+print: 'print' term '.'; 
